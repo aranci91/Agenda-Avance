@@ -183,7 +183,7 @@
       <DependentUpon>InicioColaborador.aspx</DependentUpon>
     </Compile>
     <Compile Include="ConexionBD.cs" />
-    <Compile Include="controladores\HorariosHandler.ashx.cs">
+    <Compile Include="control_temp\HorariosHandler.ashx.cs">
       <DependentUpon>HorariosHandler.ashx</DependentUpon>
     </Compile>
     <Compile Include="Global.asax.cs">
@@ -222,7 +222,7 @@
     <Compile Include="Servicios\EmailService.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="controladores\HorariosHandler.ashx" />
+    <Content Include="control_temp\HorariosHandler.ashx" />
     <None Include="packages.config" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
