@@ -72,6 +72,7 @@
     <Content Include="Administrador\GestionServicios.aspx" />
     <Content Include="Administrador\InicioAdministrador.aspx" />
     <Content Include="Administrador\PanelServicio.aspx" />
+    <Content Include="BASE DE DATOS\script.sql" />
     <Content Include="Clientes\AgendaCliente.aspx" />
     <Content Include="Clientes\EditardatosCliente.aspx" />
     <Content Include="Clientes\HistorialCitas.aspx" />
