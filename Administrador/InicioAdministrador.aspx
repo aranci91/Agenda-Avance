@@ -11,9 +11,7 @@
 <link rel="shortcut icon" href="~/imagenes/logo.ico" />
 
 <style>
-    /* ===========================
-       CARRUSEL RESEÑAS (ADMIN)
-       =========================== */
+    /* CARRUSEL RESEÑAS (ADMIN)*/
     .car-wrap{
         position:relative;
         overflow:hidden;
@@ -59,9 +57,7 @@
     }
     .car-dot.activo{ background:#ff9fc9; opacity:1; }
 
-    /* ===========================
-       EDITOR TIPO WORD
-       =========================== */
+    /*  EDITOR TIPO WORD  */
     .editor-wrap{
         margin-top:12px;
     }
@@ -275,9 +271,9 @@
 </form>
 
 <script>
-    // ===========================
+    
     // CARRUSEL 1 RESEÑA A LA VEZ / 2 SEGUNDOS
-    // ===========================
+
     (function(){
         function initCarousel(){
             var wrap = document.getElementById('carWrap');
@@ -323,7 +319,7 @@
 
    
     // EDITOR TIPO WORD
-    // ===========================
+ 
     function cmd(command){
         document.execCommand(command, false, null);
         document.getElementById('editor').focus();

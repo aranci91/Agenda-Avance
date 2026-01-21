@@ -31,7 +31,7 @@ namespace Agenda
             if (string.IsNullOrWhiteSpace(txtNombres.Text) ||
                 string.IsNullOrWhiteSpace(txtApellidos.Text) ||
                 string.IsNullOrWhiteSpace(txtRut.Text) ||
-                string.IsNullOrWhiteSpace(txtFechaNacimiento.Text) ||   // ✅ obligatoria
+                string.IsNullOrWhiteSpace(txtFechaNacimiento.Text) ||
                 string.IsNullOrWhiteSpace(txtCorreo.Text) ||
                 string.IsNullOrWhiteSpace(txtTelefono.Text) ||
                 string.IsNullOrWhiteSpace(txtClave.Text) ||
@@ -41,14 +41,30 @@ namespace Agenda
                 return;
             }
 
-            // 2) Validación de contraseña (regla UI: 6-8 y .-#$%)
+
+            // Capitalizar nombres y apellidos
+
+            string nombres = Capitalizar(txtNombres.Text.Trim());
+            string apellidos = Capitalizar(txtApellidos.Text.Trim());
+
+            // Validar RUT real
+
+            string rut = NormalizarRut(txtRut.Text);
+
+            if (!EsRutValido(rut))
+            {
+                lblMensaje.Text = "El RUT ingresado no es válido.";
+                return;
+            }
+
+            // 2) Validación de contraseña
             string clave = txtClave.Text.Trim();
             string confirmar = txtConfirmarClave.Text.Trim();
             string patron = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.\-#$%]).{6,8}$";
 
             if (!Regex.IsMatch(clave, patron))
             {
-                lblMensaje.Text = "La contraseña no cumple los requisitos (6 a 8 caracteres, mayúscula, minúscula, número y carácter especial).";
+                lblMensaje.Text = "La contraseña no cumple los requisitos.";
                 return;
             }
 
@@ -58,17 +74,11 @@ namespace Agenda
                 return;
             }
 
-            // 3) Normalizar RUT
-            string rut = NormalizarRut(txtRut.Text);
-
-            // 4) Hash de contraseña ( SIEMPRE el mismo: Seguridad.HashSha256)
             string claveHash = Seguridad.HashSha256(clave);
+            int rolCliente = 1;
 
-            int rolCliente = 1; // según Roles
-
-            // 5) Fecha nacimiento
-            DateTime fechaNac;
-            if (!DateTime.TryParse(txtFechaNacimiento.Text, out fechaNac))
+            // 3) Fecha nacimiento
+            if (!DateTime.TryParse(txtFechaNacimiento.Text, out DateTime fechaNac))
             {
                 lblMensaje.Text = "La fecha de nacimiento no es válida.";
                 return;
@@ -86,28 +96,45 @@ namespace Agenda
                     {
                         try
                         {
-                            // 5.1) Verificar si ya existe el RUT
-                            using (SqlCommand cmdExiste = new SqlCommand(
+
+                            // Verificar RUT existente
+
+                            using (SqlCommand cmdExisteRut = new SqlCommand(
                                 "SELECT COUNT(1) FROM dbo.Usuarios WHERE Rut = @Rut", cn, tx))
                             {
-                                cmdExiste.Parameters.AddWithValue("@Rut", rut);
+                                cmdExisteRut.Parameters.AddWithValue("@Rut", rut);
 
-                                int existe = Convert.ToInt32(cmdExiste.ExecuteScalar());
-                                if (existe > 0)
+                                int existeRut = Convert.ToInt32(cmdExisteRut.ExecuteScalar());
+                                if (existeRut > 0)
                                 {
-                                    lblMensaje.Text = "Este RUT ya está registrado. Intente iniciar sesión o recuperar contraseña.";
+                                    lblMensaje.Text = "Este RUT ya está registrado.";
                                     tx.Rollback();
                                     return;
                                 }
                             }
 
-                            // 5.2) Insertar en Usuarios y obtener UsuarioID
+                          
+                            // Verificar CORREO existente
+                            using (SqlCommand cmdExisteCorreo = new SqlCommand(
+                                "SELECT COUNT(1) FROM dbo.Usuarios WHERE Correo = @Correo", cn, tx))
+                            {
+                                cmdExisteCorreo.Parameters.AddWithValue("@Correo", txtCorreo.Text.Trim());
+
+                                int existeCorreo = Convert.ToInt32(cmdExisteCorreo.ExecuteScalar());
+                                if (existeCorreo > 0)
+                                {
+                                    lblMensaje.Text = "Este correo ya está registrado. Intenta iniciar sesión.";
+                                    tx.Rollback();
+                                    return;
+                                }
+                            }
+
+                            // Insertar usuario
                             int usuarioId;
                             using (SqlCommand cmdUser = new SqlCommand(@"
 INSERT INTO dbo.Usuarios (RolID, Rut, Correo, ClaveHash, Telefono)
 OUTPUT INSERTED.UsuarioID
-VALUES (@RolID, @Rut, @Correo, @ClaveHash, @Telefono);
-", cn, tx))
+VALUES (@RolID, @Rut, @Correo, @ClaveHash, @Telefono);", cn, tx))
                             {
                                 cmdUser.Parameters.AddWithValue("@RolID", rolCliente);
                                 cmdUser.Parameters.AddWithValue("@Rut", rut);
@@ -118,15 +145,14 @@ VALUES (@RolID, @Rut, @Correo, @ClaveHash, @Telefono);
                                 usuarioId = Convert.ToInt32(cmdUser.ExecuteScalar());
                             }
 
-                            // 5.3) Insertar en Clientes
+                            // Insertar cliente
                             using (SqlCommand cmdCliente = new SqlCommand(@"
 INSERT INTO dbo.Clientes (UsuarioID, Nombre, Apellido, FechaNacimiento)
-VALUES (@UsuarioID, @Nombre, @Apellido, @FechaNacimiento);
-", cn, tx))
+VALUES (@UsuarioID, @Nombre, @Apellido, @FechaNacimiento);", cn, tx))
                             {
                                 cmdCliente.Parameters.AddWithValue("@UsuarioID", usuarioId);
-                                cmdCliente.Parameters.AddWithValue("@Nombre", txtNombres.Text.Trim());
-                                cmdCliente.Parameters.AddWithValue("@Apellido", txtApellidos.Text.Trim());
+                                cmdCliente.Parameters.AddWithValue("@Nombre", nombres);
+                                cmdCliente.Parameters.AddWithValue("@Apellido", apellidos);
                                 cmdCliente.Parameters.AddWithValue("@FechaNacimiento", fechaNac);
 
                                 cmdCliente.ExecuteNonQuery();
@@ -142,13 +168,26 @@ VALUES (@UsuarioID, @Nombre, @Apellido, @FechaNacimiento);
                     }
                 }
 
-                Response.Redirect("Ingreso.aspx");
+
+                // Mensaje de éxito
+
+                Session["RegistroExitoso"] = true;
+                lblMensaje.Text = "Registro exitoso. Ya puedes iniciar sesión.";
+                lblMensaje.ForeColor = System.Drawing.Color.Green;
+
+
+                ClientScript.RegisterStartupScript(this.GetType(), "redirigir",
+                    "setTimeout(function(){ window.location='Ingreso.aspx'; }, 5000);", true);
+
             }
             catch (Exception ex)
             {
                 lblMensaje.Text = "Error al registrar: " + ex.Message;
             }
         }
+
+        //  UTILIDADES 
+
 
         private string NormalizarRut(string rutInput)
         {
@@ -163,6 +202,65 @@ VALUES (@UsuarioID, @Nombre, @Apellido, @FechaNacimiento);
             }
 
             return rut;
+        }
+
+
+
+        // Validador real de RUT chileno
+
+        private bool EsRutValido(string rut)
+        {
+            try
+            {
+                rut = rut.Replace(".", "").Replace("-", "").ToUpper();
+                if (rut.Length < 2) return false;
+
+                string numero = rut.Substring(0, rut.Length - 1);
+                char dv = rut[rut.Length - 1];
+
+                int suma = 0;
+                int multiplicador = 2;
+
+                for (int i = numero.Length - 1; i >= 0; i--)
+                {
+                    suma += int.Parse(numero[i].ToString()) * multiplicador;
+                    multiplicador++;
+                    if (multiplicador > 7) multiplicador = 2;
+                }
+
+                int resto = suma % 11;
+                int dvCalculado = 11 - resto;
+
+                string dvFinal;
+                if (dvCalculado == 11) dvFinal = "0";
+                else if (dvCalculado == 10) dvFinal = "K";
+                else dvFinal = dvCalculado.ToString();
+
+                return dv.ToString() == dvFinal;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+
+        // Capitalización backend
+
+        private string Capitalizar(string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto)) return texto;
+
+            texto = texto.ToLower();
+            string[] partes = texto.Split(' ');
+            for (int i = 0; i < partes.Length; i++)
+            {
+                if (partes[i].Length > 0)
+                {
+                    partes[i] = char.ToUpper(partes[i][0]) + partes[i].Substring(1);
+                }
+            }
+            return string.Join(" ", partes);
         }
     }
 }

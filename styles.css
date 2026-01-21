@@ -631,3 +631,13 @@
     background-color: #e46aa3 !important;
     color: #fff !important;
 }
+
+.mensaje-exito {
+    background: #e6ffe6;
+    color: #1e7e34;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 10px;
+}

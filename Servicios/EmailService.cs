@@ -110,9 +110,8 @@ namespace Agenda.Servicios
             EnviarHtmlSimple(destinatarioEmail, asunto, cuerpoHtml, gmailUser, gmailAppPass, fromName);
         }
 
-        // =========================
-        // ✅ NUEVO: ENVÍO MASIVO (B: uno por uno) + logo embebido
-        // =========================
+        //  NUEVO: ENVÍO MASIVO (B: uno por uno) + logo embebido
+      
         public static int EnviarMensajeMasivoAClientes(List<string> correosClientes, string asunto, string cuerpoHtmlEditor, string logoPathFisico)
         {
             if (correosClientes == null || correosClientes.Count == 0)
@@ -203,7 +202,7 @@ namespace Agenda.Servicios
             }
         }
 
-        // ✅ Envía HTML + logo embebido por CID
+        // Envía HTML + logo embebido por CID
         private static void EnviarHtmlConLogoEmbebido(
             string destinatarioEmail,
             string asunto,

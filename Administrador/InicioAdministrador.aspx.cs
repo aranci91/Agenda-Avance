@@ -42,7 +42,7 @@ namespace Agenda.Administrador
 
             ConexionBD bd = new ConexionBD();
 
-            // ✅ SOLO visibles + últimas 10 + solo NOMBRE
+            // SOLO visiblesúltimas 10 + solo NOMBRE
             string query = @"
 SELECT TOP 10
     c.Nombre AS NombreCliente,
@@ -91,7 +91,7 @@ ORDER BY r.ReseñaID DESC;";
                     return;
                 }
 
-                // ✅ Obtener correos clientes (RolID = 1)
+                //  Obtener correos clientes (RolID = 1)
                 List<string> correos = ObtenerCorreosClientes();
 
                 if (correos.Count == 0)
@@ -100,10 +100,10 @@ ORDER BY r.ReseñaID DESC;";
                     return;
                 }
 
-                // ✅ Logo absoluto (para que lo vean en el correo)
+                // Logo absoluto (para que lo vean en el correo)
                 string logoAbs = ObtenerLogoAbsoluto();
 
-                // ✅ Armar HTML final con estilo Yessi Aranci
+                // Armar HTML final con estilo Yessi Aranci
                 string htmlFinal = $@"
 <div style='font-family: Arial, sans-serif; line-height:1.6; color:#222;'>
   <div style='background:#fff1f7; border:1px solid #ffd0e3; border-radius:16px; padding:16px 18px;'>
@@ -120,7 +120,7 @@ ORDER BY r.ReseñaID DESC;";
   </div>
 </div>";
 
-                // ✅ Enviar masivo
+                // Enviar masivo
                 EmailService.EnviarMasivoClientes(correos, asunto, htmlFinal);
 
                 // Limpieza
@@ -139,7 +139,7 @@ ORDER BY r.ReseñaID DESC;";
         {
             ConexionBD bd = new ConexionBD();
 
-            // ✅ asumiendo que el correo está en dbo.Usuarios.Correo y RolID=1
+            // asumiendo que el correo está en dbo.Usuarios.Correo y RolID=1
             string sql = @"
 SELECT DISTINCT u.Correo
 FROM dbo.Usuarios u

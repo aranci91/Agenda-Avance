@@ -26,6 +26,7 @@ namespace Agenda
         {
             lblMensaje.Text = "";
             lblErrorClave.Text = "";
+            lblErrorRut.Text = ""; 
             pnlVerificacion.Visible = false;
 
             string rut = NormalizarRut(txtRut.Text);
@@ -37,15 +38,22 @@ namespace Agenda
                 return;
             }
 
+            // Validación REAL de RUT en servidor
+            if (!RutValido(rut))
+            {
+                lblErrorRut.Text = "RUT inválido. Verifica el dígito verificador.";
+                return;
+            }
+
             string claveHash = Seguridad.HashSha256(clave);
 
             ConexionBD bd = new ConexionBD();
 
             string query = @"
-SELECT TOP 1 UsuarioID, RolID
-FROM dbo.Usuarios
-WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
-";
+                SELECT TOP 1 UsuarioID, RolID
+                FROM dbo.Usuarios
+                WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
+            ";
 
             SqlParameter[] parametros =
             {
@@ -68,13 +76,14 @@ WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
             Session["RolID"] = rolId;
             Session["Rut"] = rut;
 
+            // Código de verificación
             string codigo = new Random().Next(100000, 999999).ToString();
             Session["CodigoVerificacion"] = codigo;
 
             pnlVerificacion.Visible = true;
 
-            // Solo para pruebas
-            lblMensaje.Text = "Se envió un código de verificación (simulado). Código: " + codigo;
+            // Solo para pruebas (luego lo borramos)
+            lblMensaje.Text = "Código generado: " + codigo;
         }
 
         protected void btnVerificar_Click(object sender, EventArgs e)
@@ -112,7 +121,6 @@ WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
             lblMensaje.Text = "";
             pnlVerificacion.Visible = true;
 
-            // 1) Validar sesión
             if (Session["UsuarioID"] == null)
             {
                 lblMensaje.Text = "Debe iniciar sesión primero para enviar el código por correo.";
@@ -121,7 +129,6 @@ WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
 
             int usuarioId = Convert.ToInt32(Session["UsuarioID"]);
 
-            // 2) Obtener correo real del usuario desde BD
             string correoCliente = ObtenerCorreoUsuario(usuarioId);
 
             if (string.IsNullOrWhiteSpace(correoCliente))
@@ -130,22 +137,18 @@ WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
                 return;
             }
 
-            // 3) Generar nuevo código y guardarlo en sesión
             string codigo = new Random().Next(100000, 999999).ToString();
             Session["CodigoVerificacion"] = codigo;
 
             try
             {
-                // 4) Enviar correo REAL por SMTP
                 EmailService.EnviarCodigoVerificacion(correoCliente, codigo);
-
                 string correoOculto = Seguridad.EnmascararCorreo(correoCliente);
                 lblMensaje.Text = "Te enviamos el código a tu correo: " + correoOculto;
             }
             catch (Exception ex)
             {
-                // Si falla, no botamos el flujo, solo avisamos
-                lblMensaje.Text = " No se pudo enviar el correo. Detalle: " + ex.Message;
+                lblMensaje.Text = "No se pudo enviar el correo. Detalle: " + ex.Message;
             }
         }
 
@@ -188,6 +191,44 @@ WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
             }
 
             return rut;
+        }
+
+        //  Validación real de RUT (módulo 11)
+        private bool RutValido(string rutConDv)
+        {
+            if (string.IsNullOrWhiteSpace(rutConDv)) return false;
+
+            rutConDv = rutConDv.Replace(".", "").Replace(" ", "").ToUpper();
+
+            if (!rutConDv.Contains("-")) return false;
+
+            string[] partes = rutConDv.Split('-');
+            if (partes.Length != 2) return false;
+
+            string cuerpo = partes[0];
+            string dv = partes[1];
+
+            if (!int.TryParse(cuerpo, out _)) return false;
+
+            int suma = 0;
+            int multiplo = 2;
+
+            for (int i = cuerpo.Length - 1; i >= 0; i--)
+            {
+                suma += int.Parse(cuerpo[i].ToString()) * multiplo;
+                multiplo++;
+                if (multiplo > 7) multiplo = 2;
+            }
+
+            int resto = suma % 11;
+            int dvEsperado = 11 - resto;
+
+            string dvCalc;
+            if (dvEsperado == 11) dvCalc = "0";
+            else if (dvEsperado == 10) dvCalc = "K";
+            else dvCalc = dvEsperado.ToString();
+
+            return dvCalc == dv;
         }
     }
 }
