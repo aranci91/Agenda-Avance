@@ -16,15 +16,7 @@ namespace Agenda.Administrador
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            // Seguridad
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
-            {
-                Response.Redirect("~/Ingreso.aspx");
-                return;
-            }
-
-            // Solo admin (RolID = 3)
-            if (Convert.ToInt32(Session["RolID"]) != 3)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null || Convert.ToInt32(Session["Rol"]) != 3)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -32,211 +24,155 @@ namespace Agenda.Administrador
 
             if (!IsPostBack)
             {
-                lblMsg.Text = "";
-                lblVacio.Text = "";
+                hfUsuarioID.Value = "";
+                btnCrear.Text = "CREAR COLABORADOR";
                 CargarColaboradores();
             }
         }
 
+        protected void btnInicio_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("~/Administrador/InicioAdministrador.aspx");
+        }
+
         private void CargarColaboradores()
         {
-            lblVacio.Text = "";
-
             ConexionBD bd = new ConexionBD();
 
             string sql = @"
-SELECT 
-    u.UsuarioID,
-    u.Rut,
-    u.Correo,
-    c.Nombre,
-    c.Especialidad
-FROM dbo.Usuarios u
-INNER JOIN dbo.Colaboradores c ON c.UsuarioID = u.UsuarioID
-WHERE u.RolID = 2
-ORDER BY u.UsuarioID DESC;";
+SELECT u.UsuarioID,u.Rut,u.Telefono,u.Correo,c.Nombre,c.Especialidad
+FROM Usuarios u
+INNER JOIN Colaboradores c ON u.UsuarioID=c.UsuarioID
+WHERE u.Rol=2
+ORDER BY u.UsuarioID DESC";
 
             DataTable dt = bd.EjecutarConsulta(sql, null);
 
             rptColaboradores.DataSource = dt;
             rptColaboradores.DataBind();
 
-            if (dt.Rows.Count == 0)
-                lblVacio.Text = "Aún no hay colaboradores registrados.";
+            lblVacio.Text = dt.Rows.Count == 0 ? "No hay colaboradores registrados." : "";
         }
 
-        
-        // CREAR COLABORADOR
-       
         protected void btnCrear_Click(object sender, EventArgs e)
         {
-            lblMsg.Text = "";
-
             string rut = NormalizarRut(txtRut.Text);
-            string correo = (txtCorreo.Text ?? "").Trim();
-            string nombre = (txtNombre.Text ?? "").Trim();
-            string especialidad = (txtEspecialidad.Text ?? "").Trim();
-            string claveTemp = (txtClaveTemp.Text ?? "").Trim();
+            string telefono = txtTelefono.Text.Trim();
+            string correo = txtCorreo.Text.Trim();
+            string nombre = txtNombre.Text.Trim();
+            string especialidad = txtEspecialidad.Text.Trim();
+            string clave = txtClaveTemp.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(rut) ||
-                string.IsNullOrWhiteSpace(correo) ||
-                string.IsNullOrWhiteSpace(nombre) ||
-                string.IsNullOrWhiteSpace(especialidad) ||
-                string.IsNullOrWhiteSpace(claveTemp))
+            if (rut == "" || telefono == "" || correo == "" || nombre == "" || especialidad == "")
             {
-                lblMsg.Text = "Completa todos los campos para crear el colaborador.";
+                lblMsg.Text = "Completa todos los campos.";
                 return;
             }
 
-            // Misma regla de clave del RegistroCliente
-            string patron = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[-#$%]).{6,8}$";
-            if (!Regex.IsMatch(claveTemp, patron))
+            ConexionBD bd = new ConexionBD();
+
+            if (hfUsuarioID.Value == "")
             {
-                lblMsg.Text = "La contraseña no cumple requisitos (6 a 8 caracteres, mayúscula, minúscula, número y caracter especial -#$%).";
-                return;
-            }
-
-            try
-            {
-                ConexionBD bd = new ConexionBD();
-
-                // 1) Validar que el RUT no exista
-                string sqlExiste = @"SELECT COUNT(1) AS Existe FROM dbo.Usuarios WHERE Rut = @Rut;";
-                SqlParameter[] pExiste = { new SqlParameter("@Rut", rut) };
-                DataTable dtExiste = bd.EjecutarConsulta(sqlExiste, pExiste);
-
-                int existe = Convert.ToInt32(dtExiste.Rows[0]["Existe"]);
-                if (existe > 0)
+                string patron = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[-#$%]).{6,8}$";
+                if (!Regex.IsMatch(clave, patron))
                 {
-                    lblMsg.Text = "Ese RUT ya existe en el sistema.";
+                    lblMsg.Text = "Contraseña no válida.";
                     return;
                 }
 
-                // CLAVE HASH igual que Ingreso.aspx.cs
-                string claveHash = Seguridad.HashSha256(claveTemp);
+                string hash = Seguridad.HashSha256(clave);
 
-                // 2) Insert en Usuarios (RolID = 2)
-                string sqlInsertUsuario = @"
-INSERT INTO dbo.Usuarios (RolID, Rut, Correo, ClaveHash, Telefono)
-VALUES (2, @Rut, @Correo, @ClaveHash, NULL);
+                string sqlUser = @"INSERT INTO Usuarios(Rol,Rut,Telefono,Correo,ClaveHash)
+VALUES(2,@Rut,@Telefono,@Correo,@ClaveHash);
+SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-SELECT CAST(SCOPE_IDENTITY() AS INT) AS NuevoUsuarioID;";
-
-                SqlParameter[] pU =
+                SqlParameter[] p1 =
                 {
-                    new SqlParameter("@Rut", rut),
-                    new SqlParameter("@Correo", correo),
-                    new SqlParameter("@ClaveHash", claveHash)
+                    new SqlParameter("@Rut",rut),
+                    new SqlParameter("@Telefono",telefono),
+                    new SqlParameter("@Correo",correo),
+                    new SqlParameter("@ClaveHash",hash)
                 };
 
-                DataTable dtNew = bd.EjecutarConsulta(sqlInsertUsuario, pU);
-                int nuevoUsuarioId = Convert.ToInt32(dtNew.Rows[0]["NuevoUsuarioID"]);
+                int id = Convert.ToInt32(bd.EjecutarConsulta(sqlUser, p1).Rows[0][0]);
 
-                // 3) Insert en Colaboradores
-                string sqlInsertColab = @"
-INSERT INTO dbo.Colaboradores (UsuarioID, Nombre, Especialidad)
-VALUES (@UsuarioID, @Nombre, @Especialidad);";
+                string sqlCol = @"INSERT INTO Colaboradores(UsuarioID,Nombre,Especialidad)
+VALUES(@ID,@Nombre,@Especialidad)";
 
-                SqlParameter[] pC =
+                SqlParameter[] p2 =
                 {
-                    new SqlParameter("@UsuarioID", nuevoUsuarioId),
-                    new SqlParameter("@Nombre", nombre),
-                    new SqlParameter("@Especialidad", especialidad)
+                    new SqlParameter("@ID",id),
+                    new SqlParameter("@Nombre",nombre),
+                    new SqlParameter("@Especialidad",especialidad)
                 };
 
-                bd.EjecutarComando(sqlInsertColab, pC);
+                bd.EjecutarComando(sqlCol, p2);
 
-                // Limpiar inputs
-                txtRut.Text = "";
-                txtCorreo.Text = "";
-                txtNombre.Text = "";
-                txtEspecialidad.Text = "";
-                txtClaveTemp.Text = "";
-
-                lblMsg.Text = "Colaborador creado ✅ (ya puede iniciar sesión con su clave temporal).";
-                CargarColaboradores();
+                lblMsg.Text = "Colaborador creado ✅";
             }
-            catch (Exception ex)
+            else
             {
-                lblMsg.Text = "No se pudo crear. Detalle: " + ex.Message;
+                int id = Convert.ToInt32(hfUsuarioID.Value);
+
+                string sql = @"
+UPDATE Usuarios SET Telefono=@Telefono,Correo=@Correo WHERE UsuarioID=@ID;
+UPDATE Colaboradores SET Nombre=@Nombre,Especialidad=@Especialidad WHERE UsuarioID=@ID;";
+
+                SqlParameter[] p =
+                {
+                    new SqlParameter("@Telefono",telefono),
+                    new SqlParameter("@Correo",correo),
+                    new SqlParameter("@Nombre",nombre),
+                    new SqlParameter("@Especialidad",especialidad),
+                    new SqlParameter("@ID",id)
+                };
+
+                bd.EjecutarComando(sql, p);
+
+                lblMsg.Text = "Colaborador actualizado ✅";
+                hfUsuarioID.Value = "";
+                btnCrear.Text = "CREAR COLABORADOR";
             }
+
+            Limpiar();
+            CargarColaboradores();
         }
 
-        
-        //  EDITAR / ELIMINAR
-        
-        protected void rptColaboradores_ItemCommand(object source, RepeaterCommandEventArgs e)
+        protected void rptColaboradores_ItemCommand(object source, System.Web.UI.WebControls.RepeaterCommandEventArgs e)
         {
-            lblMsg.Text = "";
-
-            if (!int.TryParse(Convert.ToString(e.CommandArgument), out int usuarioId))
-                return;
-
+            int id = Convert.ToInt32(e.CommandArgument);
             ConexionBD bd = new ConexionBD();
 
             if (e.CommandName == "editar")
             {
-                TextBox txtNombreRow = (TextBox)e.Item.FindControl("txtNombreRow");
-                TextBox txtEspecialidadRow = (TextBox)e.Item.FindControl("txtEspecialidadRow");
+                string sql = @"SELECT Rut,Telefono,Correo,Nombre,Especialidad
+FROM Usuarios u INNER JOIN Colaboradores c ON u.UsuarioID=c.UsuarioID
+WHERE u.UsuarioID=@ID";
 
-                string nombre = (txtNombreRow.Text ?? "").Trim();
-                string especialidad = (txtEspecialidadRow.Text ?? "").Trim();
+                SqlParameter[] p = { new SqlParameter("@ID", id) };
+                DataTable dt = bd.EjecutarConsulta(sql, p);
 
-                if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(especialidad))
-                {
-                    lblMsg.Text = "Nombre y especialidad no pueden ir vacíos.";
-                    return;
-                }
+                txtRut.Text = dt.Rows[0]["Rut"].ToString();
+                txtTelefono.Text = dt.Rows[0]["Telefono"].ToString();
+                txtCorreo.Text = dt.Rows[0]["Correo"].ToString();
+                txtNombre.Text = dt.Rows[0]["Nombre"].ToString();
+                txtEspecialidad.Text = dt.Rows[0]["Especialidad"].ToString();
 
-                try
-                {
-                    string sqlUp = @"
-UPDATE dbo.Colaboradores
-SET Nombre = @Nombre,
-    Especialidad = @Especialidad
-WHERE UsuarioID = @UsuarioID;";
-
-                    SqlParameter[] pUp =
-                    {
-                        new SqlParameter("@Nombre", nombre),
-                        new SqlParameter("@Especialidad", especialidad),
-                        new SqlParameter("@UsuarioID", usuarioId)
-                    };
-
-                    bd.EjecutarComando(sqlUp, pUp);
-                    lblMsg.Text = "Colaborador actualizado ✅";
-                    CargarColaboradores();
-                }
-                catch (Exception ex)
-                {
-                    lblMsg.Text = "No se pudo actualizar. Detalle: " + ex.Message;
-                }
+                hfUsuarioID.Value = id.ToString();
+                btnCrear.Text = "ACTUALIZAR COLABORADOR";
             }
-            else if (e.CommandName == "eliminar")
+
+            if (e.CommandName == "eliminar")
             {
-                try
-                {
-                    // Si hay citas asociadas, podría fallar por FK.
-                    string sqlDelColab = @"DELETE FROM dbo.Colaboradores WHERE UsuarioID = @UsuarioID;";
-                    SqlParameter[] p1 = { new SqlParameter("@UsuarioID", usuarioId) };
-                    bd.EjecutarComando(sqlDelColab, p1);
+                SqlParameter[] p = { new SqlParameter("@ID", id) };
+                bd.EjecutarComando("DELETE FROM Colaboradores WHERE UsuarioID=@ID", p);
+                bd.EjecutarComando("DELETE FROM Usuarios WHERE UsuarioID=@ID", p);
 
-                    string sqlDelUser = @"DELETE FROM dbo.Usuarios WHERE UsuarioID = @UsuarioID;";
-                    SqlParameter[] p2 = { new SqlParameter("@UsuarioID", usuarioId) };
-                    bd.EjecutarComando(sqlDelUser, p2);
-
-                    lblMsg.Text = "Colaborador eliminado ✅";
-                    CargarColaboradores();
-                }
-                catch (Exception ex)
-                {
-                    lblMsg.Text = "No se pudo eliminar (probablemente tiene citas asociadas). Detalle: " + ex.Message;
-                }
+                lblMsg.Text = "Colaborador eliminado ✅";
+                CargarColaboradores();
             }
         }
 
-        // MENÚ
-      
         protected void btnCerrarSesion_Click(object sender, EventArgs e)
         {
             Session.Clear();
@@ -244,8 +180,16 @@ WHERE UsuarioID = @UsuarioID;";
             Response.Redirect("~/Ingreso.aspx");
         }
 
-        // HELPERS
-    
+        private void Limpiar()
+        {
+            txtRut.Text = "";
+            txtTelefono.Text = "";
+            txtCorreo.Text = "";
+            txtNombre.Text = "";
+            txtEspecialidad.Text = "";
+            txtClaveTemp.Text = "";
+        }
+
         private string NormalizarRut(string rutInput)
         {
             if (string.IsNullOrWhiteSpace(rutInput)) return "";
@@ -253,12 +197,19 @@ WHERE UsuarioID = @UsuarioID;";
             string rut = rutInput.Trim().ToUpper();
             rut = rut.Replace(".", "").Replace(" ", "").Replace("-", "");
 
-            if (rut.Length >= 2)
+            if (rut.Length < 2) return "";
+
+            for (int i = 0; i < rut.Length; i++)
             {
-                rut = rut.Substring(0, rut.Length - 1) + "-" + rut.Substring(rut.Length - 1);
+                char ch = rut[i];
+                bool ok = (ch >= '0' && ch <= '9') || ch == 'K';
+                if (!ok) return "";
             }
 
-            return rut;
+            string cuerpo = rut.Substring(0, rut.Length - 1);
+            string dv = rut.Substring(rut.Length - 1, 1);
+
+            return cuerpo + "-" + dv;
         }
     }
 }

@@ -1,13 +1,7 @@
-﻿body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #fde8f2;
-}
+﻿body {margin: 0; font-family: Arial, sans-serif; background-color: #fde8f2;}
 
 
 /* ESTILOS PARA LOGIN/REGISTRO*/
-
-
 /* Contenedor que centra todo */
 .contenedor {
     width: 100%;
@@ -196,12 +190,34 @@
     left: 20px;
     z-index: 9999;
 }
-
 .btn-volver {
-    width: auto;
-    max-width: none;
-    padding: 10px 16px;
+    width: 100%;
+    max-width: 420px;
+    padding: 14px;
+    border-radius: 25px;
+    border: 1px solid #000;
+    background-color: #ff9fc9;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
 }
+
+.btn-volver:hover {
+    background-color: #f58bbd;
+}
+
+
+.grupo-botones {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    gap: 12px;
+    margin-top: 10px;
+}
+
+
+
 
 /*  ESTILOS DEL PANEL (INICIO CLIENTE) - LIMPIO Y SIN DUPLICADOS */
 
@@ -241,7 +257,7 @@
     gap: 14px;
 }
 
-/* Alto “del porte de la franja” (no gigante) */
+
 .brand-logo {
     height: 72px;
     width: auto;
@@ -640,4 +656,58 @@
     text-align: center;
     font-weight: 600;
     margin-bottom: 10px;
+}
+
+
+/* FIX RESPONSIVE FORMULARIOS ADMIN  */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+    .form-row .textbox,
+    .form-row .select {
+        flex: 1 1 100%;
+        min-width: 100%;
+    }
+
+.btn-confirm {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Tablas responsive */
+.grid-card {
+    overflow-x: auto;
+}
+
+    .grid-card table {
+        width: 100%;
+        min-width: 600px;
+    }
+
+/* FIX botones en formularios */
+.card .btn-confirm {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+    .form-row .textbox {
+        width: 100%;
+    }
+
+/* Responsive tablas */
+@media (max-width: 768px) {
+    .grid-card table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
 }

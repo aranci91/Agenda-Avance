@@ -20,7 +20,7 @@
         }
     }
 
-    // ===== CAMBIO NUEVO =====
+    
     function capitalizarTexto(input) {
         let texto = input.value.toLowerCase();
         texto = texto.replace(/\b\w/g, function (letra) {

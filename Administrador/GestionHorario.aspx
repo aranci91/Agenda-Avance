@@ -72,7 +72,12 @@
     <div class="app-body">
 
         <div class="sidebar">
-            <div class="menu-title">MENÚ</div>
+    <div class="menu-title">MENÚ</div>
+
+            <asp:Button runat="server"
+                Text="INICIO"
+                CssClass="menu-btn"
+                OnClick="btnInicio_Click" />
 
             <asp:Button runat="server"
                 Text="GESTIÓN DE SERVICIOS"

@@ -14,14 +14,14 @@ namespace Agenda.Colaboradores
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
             }
 
-            // Solo colaborador (RolID = 2)
-            if (Convert.ToInt32(Session["RolID"]) != 2)
+            // Solo colaborador (Rol = 2)
+            if (Convert.ToInt32(Session["Rol"]) != 2)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;

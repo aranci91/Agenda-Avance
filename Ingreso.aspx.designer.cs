@@ -114,13 +114,13 @@ namespace Agenda
         protected global::System.Web.UI.WebControls.Button btnVerificar;
 
         /// <summary>
-        /// Control btnEnviarCorreo.
+        /// Control btnReenviarCodigo.
         /// </summary>
         /// <remarks>
         /// Campo generado automáticamente.
         /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnEnviarCorreo;
+        protected global::System.Web.UI.WebControls.Button btnReenviarCodigo;
 
         /// <summary>
         /// Control lblMensaje.

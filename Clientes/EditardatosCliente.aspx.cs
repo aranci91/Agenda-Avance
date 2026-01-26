@@ -14,14 +14,14 @@ namespace Agenda
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad sesión
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
             }
 
-            // Solo cliente (RolID = 1)
-            if (Convert.ToInt32(Session["RolID"]) != 1)
+            // Solo cliente (Rol = 1)
+            if (Convert.ToInt32(Session["Rol"]) != 1)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;

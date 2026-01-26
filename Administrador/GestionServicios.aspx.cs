@@ -14,7 +14,7 @@ namespace Agenda.Administrador
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad: solo ADMIN (RolID = 3)
-            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["RolID"]) != 3)
+            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["Rol"]) != 3)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -27,15 +27,16 @@ namespace Agenda.Administrador
         }
 
         // CARGAR LISTA DE SERVICIOS
- 
+
         private void CargarServicios()
         {
             ConexionBD bd = new ConexionBD();
 
             string sql = @"
-                SELECT ServicioID, NombreServicio, DuracionMin, Precio, Activo
-                FROM dbo.Servicios
-                ORDER BY NombreServicio";
+        SELECT ServicioID, NombreServicio, DuracionMin, Precio, Activo
+        FROM dbo.Servicios
+        WHERE Activo = 1
+        ORDER BY NombreServicio";
 
             DataTable dt = bd.EjecutarConsulta(sql, null);
 
@@ -43,9 +44,10 @@ namespace Agenda.Administrador
             rptServicios.DataBind();
         }
 
-       
+
+
         // ACTIVAR / DESACTIVAR SERVICIO (SWITCH)
-     
+
         protected void chkActivoServicio_CheckedChanged(object sender, EventArgs e)
         {
             CheckBox chk = (CheckBox)sender;
@@ -96,6 +98,37 @@ namespace Agenda.Administrador
             Session.Clear();
             Session.Abandon();
             Response.Redirect("~/Ingreso.aspx");
+        }
+
+        // ELIMINAR SERVICIO 
+        protected void EliminarServicio(object sender, CommandEventArgs e)
+        {
+            int servicioId = Convert.ToInt32(e.CommandArgument);
+
+            try
+            {
+                ConexionBD bd = new ConexionBD();
+
+                string sql = @"
+UPDATE dbo.Servicios
+SET Activo = 0
+WHERE ServicioID = @ServicioID";
+
+                SqlParameter[] p =
+                {
+            new SqlParameter("@ServicioID", servicioId)
+        };
+
+                bd.EjecutarComando(sql, p);
+
+                // Recargar lista
+                CargarServicios();
+            }
+            catch (Exception ex)
+            {
+                // opcional: mostrar mensaje
+                // lblMensaje.Text = "No se pudo eliminar el servicio: " + ex.Message;
+            }
         }
 
     }

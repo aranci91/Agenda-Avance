@@ -132,11 +132,11 @@ namespace Agenda
                             // Insertar usuario
                             int usuarioId;
                             using (SqlCommand cmdUser = new SqlCommand(@"
-INSERT INTO dbo.Usuarios (RolID, Rut, Correo, ClaveHash, Telefono)
+INSERT INTO dbo.Usuarios (Rol, Rut, Correo, ClaveHash, Telefono)
 OUTPUT INSERTED.UsuarioID
-VALUES (@RolID, @Rut, @Correo, @ClaveHash, @Telefono);", cn, tx))
+VALUES (@Rol, @Rut, @Correo, @ClaveHash, @Telefono);", cn, tx))
                             {
-                                cmdUser.Parameters.AddWithValue("@RolID", rolCliente);
+                                cmdUser.Parameters.AddWithValue("@Rol", rolCliente);
                                 cmdUser.Parameters.AddWithValue("@Rut", rut);
                                 cmdUser.Parameters.AddWithValue("@Correo", txtCorreo.Text.Trim());
                                 cmdUser.Parameters.AddWithValue("@ClaveHash", claveHash);

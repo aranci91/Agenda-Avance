@@ -17,14 +17,14 @@ namespace Agenda.Colaboradores
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
             }
 
-            // Solo colaborador (RolID = 2)
-            if (Convert.ToInt32(Session["RolID"]) != 2)
+            // Solo colaborador (Rol = 2)
+            if (Convert.ToInt32(Session["Rol"]) != 2)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -32,7 +32,7 @@ namespace Agenda.Colaboradores
 
             if (!IsPostBack)
             {
-                // 🔴 CAMBIO CLAVE: solo desde HOY en adelante (bloquea pasado desde UI)
+                //  CAMBIO CLAVE: solo desde HOY en adelante (bloquea pasado desde UI)
                 // Esto funciona cuando el input está en type='date' (al hacer focus)
                 txtFecha.Attributes["min"] = DateTime.Today.ToString("yyyy-MM-dd");
 
@@ -60,9 +60,9 @@ namespace Agenda.Colaboradores
             lblMensajeCita.Text = "";
         }
 
-        // ==========================
+      
         // 1) BUSCAR CLIENTE (RUT o nombre)
-        // ==========================
+      
         protected void btnBuscarCliente_Click(object sender, EventArgs e)
         {
             lblMsgBusqueda.Text = "";
@@ -136,9 +136,9 @@ ORDER BY c.Nombre, c.Apellido;";
             }
         }
 
-        // ==========================
+     
         // 2) SERVICIOS (solo activos)
-        // ==========================
+   
         private void CargarServiciosActivos()
         {
             ddlServicios.Items.Clear();
@@ -218,13 +218,12 @@ WHERE ServicioID = @ServicioID
                 ServicioID = Convert.ToInt32(dt.Rows[0]["ServicioID"]),
                 NombreServicio = dt.Rows[0]["NombreServicio"].ToString(),
                 DuracionMin = Convert.ToInt32(dt.Rows[0]["DuracionMin"]),
-                Precio = Convert.ToDecimal(dt.Rows[0]["Precio"])
+                Precio = Convert.ToInt32(dt.Rows[0]["Precio"])
             };
         }
 
-        // ==========================
         // 3) FECHA -> CARGAR HORAS INTELIGENTES
-        // ==========================
+  
         protected void txtFecha_TextChanged(object sender, EventArgs e)
         {
             lblMensajeCita.Text = "";
@@ -349,9 +348,9 @@ WHERE Fecha = @Fecha
             return true;
         }
 
-        // ==========================
+    
         // 4) CONFIRMAR CITA (INSERT + BLOQUEO)
-        // ==========================
+     
         protected void btnConfirmar_Click(object sender, EventArgs e)
         {
             lblMensajeCita.Text = "";
@@ -385,7 +384,7 @@ WHERE Fecha = @Fecha
                 return;
             }
 
-            // 🔴 VALIDACIÓN CLAVE: no permitir pasado
+            // VALIDACIÓN CLAVE: no permitir pasado
             if (fechaSeleccionada.Date < DateTime.Today)
             {
                 lblMensajeCita.Text = "No puedes crear citas en el pasado. Selecciona desde hoy en adelante 💖";
@@ -406,7 +405,7 @@ WHERE Fecha = @Fecha
                 return;
             }
 
-            int colaboradorId = Convert.ToInt32(Session["UsuarioID"]); // 🔴 colaborador logueado
+            int colaboradorId = Convert.ToInt32(Session["UsuarioID"]); //  colaborador logueado
             TimeSpan horaInicio = TimeSpan.Parse(ddlHora.SelectedValue);
 
             int slotsNecesarios = (int)Math.Ceiling(servicio.DuracionMin / (double)MINUTOS_SLOT);
@@ -528,7 +527,7 @@ WHERE HorarioID = @HorarioID;", cn, tx))
             public int ServicioID { get; set; }
             public string NombreServicio { get; set; }
             public int DuracionMin { get; set; }
-            public decimal Precio { get; set; }
+            public int Precio { get; set; }
         }
     }
 }

@@ -15,14 +15,14 @@ namespace Agenda.Administrador
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad: sesión obligatoria
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
             }
 
-            // SOLO ADMIN (RolID = 3)
-            if (Convert.ToInt32(Session["RolID"]) != 3)
+            // SOLO ADMIN (Rol = 3)
+            if (Convert.ToInt32(Session["Rol"]) != 3)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -91,7 +91,7 @@ ORDER BY r.ReseñaID DESC;";
                     return;
                 }
 
-                //  Obtener correos clientes (RolID = 1)
+                //  Obtener correos clientes (Rol = 1)
                 List<string> correos = ObtenerCorreosClientes();
 
                 if (correos.Count == 0)
@@ -143,7 +143,7 @@ ORDER BY r.ReseñaID DESC;";
             string sql = @"
 SELECT DISTINCT u.Correo
 FROM dbo.Usuarios u
-WHERE u.RolID = 1
+WHERE u.Rol = 1
   AND u.Correo IS NOT NULL
   AND LTRIM(RTRIM(u.Correo)) <> '';";
 
@@ -176,6 +176,11 @@ WHERE u.RolID = 1
             Response.Redirect("~/Ingreso.aspx");
         }
 
+        protected void btnClientes_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("GestionClientes.aspx");
+        }
+
         protected void btnGestionServicios_Click(object sender, EventArgs e)
         {
             Response.Redirect("GestionServicios.aspx");
@@ -194,6 +199,15 @@ WHERE u.RolID = 1
         protected void btnGestionColaboradores_Click(object sender, EventArgs e)
         {
             Response.Redirect("GestionColaboradores.aspx");
+        }
+
+        protected void btnReportes_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("Reportes.aspx");
+        }
+        protected void btnMisDatos_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("MisDatos.aspx");
         }
     }
 }

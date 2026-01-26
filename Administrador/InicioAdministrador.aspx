@@ -7,7 +7,8 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
    <title>Inicio Administrador - Yessi Aranci</title>
 
-<link rel="stylesheet" href="~/styles.css" />
+<link rel="stylesheet" href="<%= ResolveUrl("~/styles.css") %>" />
+
 <link rel="shortcut icon" href="~/imagenes/logo.ico" />
 
 <style>
@@ -133,9 +134,11 @@
             <div class="sidebar">
                 <div class="menu-title">MENÚ</div>
 
-                <asp:Button ID="btnClientes" runat="server"
+               <asp:Button ID="btnClientes" runat="server"
                     Text="GESTIÓN DE CLIENTES"
-                    CssClass="menu-btn" />
+                    CssClass="menu-btn"
+                    OnClick="btnClientes_Click" />
+
 
                 <asp:Button ID="btnGestionServicios" runat="server"
                     Text="GESTIÓN DE SERVICIOS"
@@ -159,11 +162,13 @@
 
                 <asp:Button ID="btnReportes" runat="server"
                     Text="REPORTES"
-                    CssClass="menu-btn" />
+                    CssClass="menu-btn" 
+                    OnClick="btnReportes_Click"/>
 
                 <asp:Button ID="btnMisDatos" runat="server"
                     Text="MIS DATOS"
-                    CssClass="menu-btn" />
+                    CssClass="menu-btn" 
+                    OnClick="btnMisDatos_Click"/>
 
                 <div class="sidebar-spacer"></div>
 

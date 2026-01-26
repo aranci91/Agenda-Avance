@@ -53,13 +53,13 @@ namespace Agenda.controladores
         private bool EsAdmin(HttpContext context)
         {
             if (context.Session == null) return false;
-            if (context.Session["RolID"] == null) return false;
-            return Convert.ToInt32(context.Session["RolID"]) == 3;
+            if (context.Session["Rol"] == null) return false;
+            return Convert.ToInt32(context.Session["Rol"]) == 3;
         }
 
-        // =========================
+
         // ADMIN - LISTAR (por colaborador)
-        // =========================
+       
         private void ListarHorariosAdmin(HttpContext context)
         {
             if (!EsAdmin(context))
@@ -109,9 +109,8 @@ ORDER BY Fecha, HoraInicio;";
             context.Response.Write(new JavaScriptSerializer().Serialize(eventos));
         }
 
-        // =========================
         // CLIENTE - LISTAR (por colaborador)
-        // =========================
+       
         private void ListarHorariosCliente(HttpContext context)
         {
             if (!int.TryParse(context.Request["colaboradorId"], out int colaboradorId) || colaboradorId <= 0)
@@ -155,9 +154,9 @@ ORDER BY Fecha, HoraInicio;";
             context.Response.Write(new JavaScriptSerializer().Serialize(eventos));
         }
 
-        // =========================
+      
         // CREAR HORARIO (ADMIN) - por colaborador + crea slots por hora
-        // =========================
+      
         private void CrearHorario(HttpContext context)
         {
             if (!EsAdmin(context))
@@ -223,9 +222,9 @@ END";
             context.Response.Write("{\"ok\":true,\"msg\":\"Horario(s) guardado(s) ✅\"}");
         }
 
-        // =========================
+       
         // ELIMINAR HORARIO (ADMIN) - solo si está disponible
-        // =========================
+       
         private void EliminarHorario(HttpContext context)
         {
             if (!EsAdmin(context))
@@ -258,30 +257,82 @@ WHERE HorarioID = @id
             context.Response.Write("{\"ok\":true,\"msg\":\"Horario eliminado ✅\"}");
         }
 
-        // =========================
+
         // RESERVAR HORARIO (bloquear)
-        // =========================
+
         private void ReservarHorario(HttpContext context)
         {
-            if (!int.TryParse(context.Request["id"], out int horarioId) || horarioId <= 0)
-            {
-                context.Response.Write("{\"ok\":false}");
-                return;
-            }
+            int horarioId = Convert.ToInt32(context.Request["id"]);
+            int clienteId = Convert.ToInt32(context.Session["UsuarioID"]);
+            int colaboradorId = Convert.ToInt32(context.Session["UsuarioID_Colaborador"]);
+            int servicioId = Convert.ToInt32(context.Session["ServicioID"]);
 
             ConexionBD bd = new ConexionBD();
 
-            string sql = @"
-UPDATE dbo.Horarios
-SET Disponible = 0
-WHERE HorarioID = @id;";
+            // 1. Bloquear horario
+            string sqlUpdate = @"UPDATE Horarios SET Disponible = 0 WHERE HorarioID = @id";
+            bd.EjecutarComando(sqlUpdate, new SqlParameter[] {
+        new SqlParameter("@id", horarioId)
+    });
 
-            SqlParameter[] p = { new SqlParameter("@id", horarioId) };
+            // 2. Insertar cita
+            string sqlInsert = @"
+    INSERT INTO Citas
+    (UsuarioID_Cliente, UsuarioID_Colaborador, ServicioID, HorarioID, FechaHora, Estado)
+    VALUES
+    (@cliente, @colab, @servicio, @horario, GETDATE(), 'Reservada')";
 
-            bd.EjecutarComando(sql, p);
+            bd.EjecutarComando(sqlInsert, new SqlParameter[] {
+        new SqlParameter("@cliente", clienteId),
+        new SqlParameter("@colab", colaboradorId),
+        new SqlParameter("@servicio", servicioId),
+        new SqlParameter("@horario", horarioId)
+    });
+
+            // 3. Obtener datos para correo
+            string sqlDatos = @"
+    SELECT 
+      u.Correo,
+      u.Nombre,
+      s.NombreServicio,
+      s.DuracionMin,
+      s.Precio,
+      h.Fecha,
+      h.HoraInicio,
+      s.Reglas,
+      s.DatosTransferencia
+    FROM Citas c
+    JOIN Usuarios u ON u.UsuarioID = c.UsuarioID_Cliente
+    JOIN Servicios s ON s.ServicioID = c.ServicioID
+    JOIN Horarios h ON h.HorarioID = c.HorarioID
+    WHERE c.HorarioID = @id";
+
+            DataTable dt = bd.EjecutarConsulta(sqlDatos, new SqlParameter[] {
+        new SqlParameter("@id", horarioId)
+    });
+
+            if (dt.Rows.Count > 0)
+            {
+                DataRow r = dt.Rows[0];
+
+                Agenda.Servicios.EmailService.EnviarConfirmacionCita(
+                    r["Correo"].ToString(),
+                    r["Nombre"].ToString(),
+                    r["NombreServicio"].ToString(),
+                    Convert.ToInt32(r["DuracionMin"]),
+                    Convert.ToDecimal(r["Precio"]),
+                    Convert.ToDateTime(r["Fecha"]),
+                    r["HoraInicio"].ToString(),
+                    r["Reglas"].ToString(),
+                    r["DatosTransferencia"].ToString()
+                );
+            }
 
             context.Response.Write("{\"ok\":true}");
         }
+
+
+
 
         public bool IsReusable => false;
     }

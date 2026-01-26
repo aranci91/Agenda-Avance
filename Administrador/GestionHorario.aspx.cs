@@ -12,7 +12,7 @@ namespace Agenda.Administrador
     {
            protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["RolID"]) != 3)
+            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["Rol"]) != 3)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -25,6 +25,12 @@ namespace Agenda.Administrador
             }
         }
 
+        protected void btnInicio_Click(object sender, EventArgs e)
+        {
+            Response.Redirect("InicioAdministrador.aspx");
+        }
+
+
         private void CargarColaboradores()
         {
             ConexionBD bd = new ConexionBD();
@@ -33,7 +39,7 @@ namespace Agenda.Administrador
 SELECT u.UsuarioID, c.Nombre
 FROM dbo.Colaboradores c
 INNER JOIN dbo.Usuarios u ON u.UsuarioID = c.UsuarioID
-WHERE u.RolID = 2
+WHERE u.Rol = 2
 ORDER BY c.Nombre;";
 
             DataTable dt = bd.EjecutarConsulta(sql, null);

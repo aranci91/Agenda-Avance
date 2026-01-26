@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Agenda.Servicios;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -39,133 +40,97 @@ namespace Agenda
             if (string.IsNullOrWhiteSpace(rut))
             {
                 lblMensaje.Text = "Debe ingresar su RUT.";
-                pnlCodigo.Visible = false;
-                pnlNuevaClave.Visible = false;
                 return;
             }
 
-            // Verificar que el RUT exista en BD
             ConexionBD bd = new ConexionBD();
-            string qExiste = "SELECT COUNT(1) FROM dbo.Usuarios WHERE Rut = @Rut;";
-            DataTable dt = bd.EjecutarConsulta(qExiste, new SqlParameter[] { new SqlParameter("@Rut", rut) });
+            string sql = "SELECT Correo FROM Usuarios WHERE Rut=@Rut";
 
-            int existe = Convert.ToInt32(dt.Rows[0][0]);
-            if (existe == 0)
+            DataTable dt = bd.EjecutarConsulta(sql, new SqlParameter[]
+            {
+                new SqlParameter("@Rut", rut)
+            });
+
+            if (dt.Rows.Count == 0)
             {
                 lblMensaje.Text = "Este RUT no está registrado.";
-                pnlCodigo.Visible = false;
-                pnlNuevaClave.Visible = false;
                 return;
             }
 
-            // Generar código 6 dígitos
+            string correo = dt.Rows[0]["Correo"].ToString();
+
             string codigo = new Random().Next(100000, 999999).ToString();
+
             Session[SESSION_CODIGO] = codigo;
             Session[SESSION_RUT] = rut;
+
+            EmailService.EnviarCodigoVerificacion(correo, codigo);
 
             pnlCodigo.Visible = true;
             pnlNuevaClave.Visible = false;
 
-            // Solo para pruebas
-            lblMensaje.Text = "Código simulado enviado: " + codigo;
+            lblMensaje.Text = "Se envió un código a tu correo.";
         }
 
         protected void btnValidarCodigo_Click(object sender, EventArgs e)
         {
             lblMensaje.Text = "";
 
-            string codigoIngresado = (txtCodigo.Text ?? "").Trim();
+            string codigoIngresado = txtCodigo.Text.Trim();
             string codigoReal = Session[SESSION_CODIGO] as string;
-
-            if (string.IsNullOrWhiteSpace(codigoReal))
-            {
-                lblMensaje.Text = "Primero debe solicitar el envío del código.";
-                pnlNuevaClave.Visible = false;
-                return;
-            }
 
             if (codigoIngresado == codigoReal)
             {
                 pnlNuevaClave.Visible = true;
-                lblMensaje.Text = "";
             }
             else
             {
-                pnlNuevaClave.Visible = false;
-                lblMensaje.Text = "Código incorrecto. Intente nuevamente.";
+                lblMensaje.Text = "Código incorrecto.";
             }
         }
 
         protected void btnGuardar_Click(object sender, EventArgs e)
         {
-            lblMensaje.Text = "";
-
             string rut = Session[SESSION_RUT] as string;
-            if (string.IsNullOrWhiteSpace(rut))
-            {
-                lblMensaje.Text = "La sesión expiró. Vuelva a solicitar el código.";
-                pnlCodigo.Visible = false;
-                pnlNuevaClave.Visible = false;
-                return;
-            }
 
-            string clave = (txtNuevaClave.Text ?? "").Trim();
-            string confirmar = (txtConfirmarClave.Text ?? "").Trim();
+            string clave = txtNuevaClave.Text.Trim();
+            string confirmar = txtConfirmarClave.Text.Trim();
 
-            // Validar reglas (mismo patrón)
             string patron = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.\-#$%]).{6,8}$";
+
             if (!Regex.IsMatch(clave, patron))
             {
-                lblMensaje.Text = "La contraseña no cumple los requisitos (6 a 8 caracteres, mayúscula, minúscula, número y carácter especial).";
-                pnlCodigo.Visible = true;
-                pnlNuevaClave.Visible = true;
+                lblMensaje.Text = "La contraseña no cumple los requisitos.";
                 return;
             }
 
             if (clave != confirmar)
             {
                 lblMensaje.Text = "Las contraseñas no coinciden.";
-                pnlCodigo.Visible = true;
-                pnlNuevaClave.Visible = true;
                 return;
             }
 
-            // Hash (mismo del sistema)
-            string nuevaHash = Seguridad.HashSha256(clave);
+            string hash = Seguridad.HashSha256(clave);
 
-            // UPDATE en BD
             ConexionBD bd = new ConexionBD();
-            string qUpdate = "UPDATE dbo.Usuarios SET ClaveHash = @Hash WHERE Rut = @Rut;";
+            string sql = "UPDATE Usuarios SET ClaveHash=@Hash WHERE Rut=@Rut";
 
-            int filas = bd.EjecutarComando(qUpdate, new SqlParameter[]
+            bd.EjecutarComando(sql, new SqlParameter[]
             {
-                new SqlParameter("@Hash", nuevaHash),
+                new SqlParameter("@Hash", hash),
                 new SqlParameter("@Rut", rut)
             });
 
-            // Limpia sesión
             Session.Remove(SESSION_CODIGO);
             Session.Remove(SESSION_RUT);
 
-            if (filas > 0)
-                Response.Redirect("Ingreso.aspx");
-            else
-                lblMensaje.Text = "No se pudo actualizar la contraseña. Intente nuevamente.";
+            Response.Redirect("Ingreso.aspx");
         }
 
         private string NormalizarRut(string rutInput)
         {
-            if (string.IsNullOrWhiteSpace(rutInput)) return "";
-
-            string rut = rutInput.Trim().ToUpper();
-            rut = rut.Replace(".", "").Replace(" ", "").Replace("-", "");
-
-            if (rut.Length >= 2)
-            {
-                rut = rut.Substring(0, rut.Length - 1) + "-" + rut.Substring(rut.Length - 1);
-            }
-
-            return rut;
+            rutInput = rutInput.Replace(".", "").Replace("-", "").Trim().ToUpper();
+            return rutInput.Substring(0, rutInput.Length - 1) + "-" + rutInput.Substring(rutInput.Length - 1);
         }
     }
 }

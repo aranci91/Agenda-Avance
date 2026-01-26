@@ -100,6 +100,17 @@
                                         ✏️
                                     </asp:LinkButton>
 
+                                    <!-- ELIMINAR -->
+                                    <asp:LinkButton
+                                        runat="server"
+                                        CommandArgument='<%# Eval("ServicioID") %>'
+                                        OnCommand="EliminarServicio"
+                                        CssClass="icon-btn"
+                                        ToolTip="Eliminar servicio"
+                                        OnClientClick="return confirm('¿Seguro que deseas eliminar este servicio?');">
+                                        🗑️
+                                    </asp:LinkButton>
+
                                 </div>
                             </div>
 

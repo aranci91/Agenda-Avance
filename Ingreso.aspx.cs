@@ -26,7 +26,7 @@ namespace Agenda
         {
             lblMensaje.Text = "";
             lblErrorClave.Text = "";
-            lblErrorRut.Text = ""; 
+            lblErrorRut.Text = "";
             pnlVerificacion.Visible = false;
 
             string rut = NormalizarRut(txtRut.Text);
@@ -38,52 +38,47 @@ namespace Agenda
                 return;
             }
 
-            // Validación REAL de RUT en servidor
             if (!RutValido(rut))
             {
-                lblErrorRut.Text = "RUT inválido. Verifica el dígito verificador.";
+                lblErrorRut.Text = "RUT inválido.";
                 return;
             }
 
             string claveHash = Seguridad.HashSha256(clave);
-
             ConexionBD bd = new ConexionBD();
 
             string query = @"
-                SELECT TOP 1 UsuarioID, RolID
-                FROM dbo.Usuarios
-                WHERE Rut = @Rut AND ClaveHash = @ClaveHash;
-            ";
+SELECT TOP 1 UsuarioID, Rol, Correo
+FROM dbo.Usuarios
+WHERE Rut=@Rut AND ClaveHash=@ClaveHash";
 
-            SqlParameter[] parametros =
+            SqlParameter[] p =
             {
                 new SqlParameter("@Rut", rut),
                 new SqlParameter("@ClaveHash", claveHash)
             };
 
-            DataTable dt = bd.EjecutarConsulta(query, parametros);
+            DataTable dt = bd.EjecutarConsulta(query, p);
 
             if (dt.Rows.Count == 0)
             {
-                lblErrorClave.Text = "Contraseña inválida.";
+                lblErrorClave.Text = "Contraseña incorrecta.";
                 return;
             }
 
             int usuarioId = Convert.ToInt32(dt.Rows[0]["UsuarioID"]);
-            int rolId = Convert.ToInt32(dt.Rows[0]["RolID"]);
+            int rol = Convert.ToInt32(dt.Rows[0]["Rol"]);
+            string correo = dt.Rows[0]["Correo"].ToString();
 
+            Session.Clear();
             Session["UsuarioID"] = usuarioId;
-            Session["RolID"] = rolId;
+            Session["Rol"] = rol;
             Session["Rut"] = rut;
 
-            // Código de verificación
-            string codigo = new Random().Next(100000, 999999).ToString();
-            Session["CodigoVerificacion"] = codigo;
+            EnviarCodigoCorreo(correo);
 
             pnlVerificacion.Visible = true;
-
-            // Solo para pruebas (luego lo borramos)
-            lblMensaje.Text = "Código generado: " + codigo;
+            lblMensaje.Text = "Se envió un código a tu correo.";
         }
 
         protected void btnVerificar_Click(object sender, EventArgs e)
@@ -91,81 +86,68 @@ namespace Agenda
             lblMensaje.Text = "";
 
             string codigoEsperado = Session["CodigoVerificacion"] as string;
-            string codigoIngresado = (txtCodigo.Text ?? "").Trim();
+            string codigoIngresado = txtCodigo.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(codigoEsperado))
+            if (Session["CodigoExpira"] != null &&
+                DateTime.Now > (DateTime)Session["CodigoExpira"])
             {
-                lblMensaje.Text = "Debe generar un código primero.";
-                pnlVerificacion.Visible = true;
+                lblMensaje.Text = "El código expiró. Reenvíalo.";
                 return;
             }
 
             if (codigoIngresado == codigoEsperado)
             {
-                int rolId = Convert.ToInt32(Session["RolID"]);
+                int rol = Convert.ToInt32(Session["Rol"]);
 
-                if (rolId == 1) Response.Redirect("~/Clientes/InicioCliente.aspx");
-                else if (rolId == 2) Response.Redirect("~/Colaboradores/InicioColaborador.aspx");
-                else if (rolId == 3) Response.Redirect("~/Administrador/InicioAdministrador.aspx");
-                else Response.Redirect("~/Inicio.aspx");
+                Session.Remove("CodigoVerificacion");
+                Session.Remove("CodigoExpira");
+
+                if (rol == 1)
+                    Response.Redirect("~/Clientes/InicioCliente.aspx");
+                else if (rol == 2)
+                    Response.Redirect("~/Colaboradores/InicioColaborador.aspx");
+                else if (rol == 3)
+                    Response.Redirect("~/Administrador/InicioAdministrador.aspx");
             }
             else
             {
-                lblMensaje.Text = "El código ingresado no es válido. Intente nuevamente.";
-                pnlVerificacion.Visible = true;
+                lblMensaje.Text = "Código incorrecto.";
             }
         }
 
-        protected void btnEnviarCorreo_Click(object sender, EventArgs e)
+        protected void btnReenviarCodigo_Click(object sender, EventArgs e)
         {
-            lblMensaje.Text = "";
-            pnlVerificacion.Visible = true;
-
-            if (Session["UsuarioID"] == null)
-            {
-                lblMensaje.Text = "Debe iniciar sesión primero para enviar el código por correo.";
-                return;
-            }
+            if (Session["UsuarioID"] == null) return;
 
             int usuarioId = Convert.ToInt32(Session["UsuarioID"]);
+            string correo = ObtenerCorreoUsuario(usuarioId);
 
-            string correoCliente = ObtenerCorreoUsuario(usuarioId);
+            EnviarCodigoCorreo(correo);
+            lblMensaje.Text = "Código reenviado a tu correo.";
+        }
 
-            if (string.IsNullOrWhiteSpace(correoCliente))
-            {
-                lblMensaje.Text = "No se encontró un correo asociado a tu cuenta.";
-                return;
-            }
-
+        private void EnviarCodigoCorreo(string correo)
+        {
             string codigo = new Random().Next(100000, 999999).ToString();
-            Session["CodigoVerificacion"] = codigo;
 
-            try
-            {
-                EmailService.EnviarCodigoVerificacion(correoCliente, codigo);
-                string correoOculto = Seguridad.EnmascararCorreo(correoCliente);
-                lblMensaje.Text = "Te enviamos el código a tu correo: " + correoOculto;
-            }
-            catch (Exception ex)
-            {
-                lblMensaje.Text = "No se pudo enviar el correo. Detalle: " + ex.Message;
-            }
+            Session["CodigoVerificacion"] = codigo;
+            Session["CodigoExpira"] = DateTime.Now.AddMinutes(5);
+
+            EmailService.EnviarCodigoVerificacion(correo, codigo);
         }
 
         private string ObtenerCorreoUsuario(int usuarioId)
         {
             ConexionBD bd = new ConexionBD();
+            string sql = "SELECT Correo FROM Usuarios WHERE UsuarioID=@id";
 
-            string query = @"SELECT TOP 1 Correo FROM dbo.Usuarios WHERE UsuarioID = @UsuarioID;";
-            SqlParameter[] parametros =
+            SqlParameter[] p =
             {
-                new SqlParameter("@UsuarioID", usuarioId)
+                new SqlParameter("@id", usuarioId)
             };
 
-            DataTable dt = bd.EjecutarConsulta(query, parametros);
-
-            if (dt.Rows.Count == 0) return "";
-            return Convert.ToString(dt.Rows[0]["Correo"]);
+            DataTable dt = bd.EjecutarConsulta(sql, p);
+            return dt.Rows.Count > 0 ? dt.Rows[0]["Correo"].ToString() : "";
         }
 
         protected void lnkCrearCuenta_Click(object sender, EventArgs e)
@@ -182,53 +164,28 @@ namespace Agenda
         {
             if (string.IsNullOrWhiteSpace(rutInput)) return "";
 
-            string rut = rutInput.Trim().ToUpper();
-            rut = rut.Replace(".", "").Replace(" ", "").Replace("-", "");
-
-            if (rut.Length >= 2)
-            {
-                rut = rut.Substring(0, rut.Length - 1) + "-" + rut.Substring(rut.Length - 1);
-            }
-
-            return rut;
+            rutInput = rutInput.Replace(".", "").Replace("-", "").Trim().ToUpper();
+            return rutInput.Substring(0, rutInput.Length - 1) + "-" + rutInput.Substring(rutInput.Length - 1);
         }
 
-        //  Validación real de RUT (módulo 11)
         private bool RutValido(string rutConDv)
         {
-            if (string.IsNullOrWhiteSpace(rutConDv)) return false;
-
-            rutConDv = rutConDv.Replace(".", "").Replace(" ", "").ToUpper();
-
+            rutConDv = rutConDv.Replace(".", "").ToUpper();
             if (!rutConDv.Contains("-")) return false;
 
             string[] partes = rutConDv.Split('-');
-            if (partes.Length != 2) return false;
+            int suma = 0, multiplo = 2;
 
-            string cuerpo = partes[0];
-            string dv = partes[1];
-
-            if (!int.TryParse(cuerpo, out _)) return false;
-
-            int suma = 0;
-            int multiplo = 2;
-
-            for (int i = cuerpo.Length - 1; i >= 0; i--)
+            for (int i = partes[0].Length - 1; i >= 0; i--)
             {
-                suma += int.Parse(cuerpo[i].ToString()) * multiplo;
-                multiplo++;
-                if (multiplo > 7) multiplo = 2;
+                suma += (partes[0][i] - '0') * multiplo;
+                multiplo = multiplo == 7 ? 2 : multiplo + 1;
             }
 
-            int resto = suma % 11;
-            int dvEsperado = 11 - resto;
+            int resto = 11 - (suma % 11);
+            string dv = resto == 11 ? "0" : resto == 10 ? "K" : resto.ToString();
 
-            string dvCalc;
-            if (dvEsperado == 11) dvCalc = "0";
-            else if (dvEsperado == 10) dvCalc = "K";
-            else dvCalc = dvEsperado.ToString();
-
-            return dvCalc == dv;
+            return dv == partes[1];
         }
     }
 }

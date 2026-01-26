@@ -44,6 +44,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System.Web.DynamicData" />
     <Reference Include="System.Web.Entity" />
     <Reference Include="System.Web.ApplicationServices" />
@@ -67,11 +70,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Administrador\GestionClientes.aspx" />
     <Content Include="Administrador\GestionColaboradores.aspx" />
     <Content Include="Administrador\GestionHorario.aspx" />
     <Content Include="Administrador\GestionServicios.aspx" />
     <Content Include="Administrador\InicioAdministrador.aspx" />
+    <Content Include="Administrador\MisDatos.aspx" />
     <Content Include="Administrador\PanelServicio.aspx" />
+    <Content Include="Administrador\Reportes.aspx" />
     <Content Include="BASE DE DATOS\script.sql" />
     <Content Include="Clientes\AgendaCliente.aspx" />
     <Content Include="Clientes\EditardatosCliente.aspx" />
@@ -92,6 +98,13 @@
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Administrador\GestionClientes.aspx.cs">
+      <DependentUpon>GestionClientes.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Administrador\GestionClientes.aspx.designer.cs">
+      <DependentUpon>GestionClientes.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Administrador\GestionColaboradores.aspx.cs">
       <DependentUpon>GestionColaboradores.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -120,12 +133,26 @@
     <Compile Include="Administrador\InicioAdministrador.aspx.designer.cs">
       <DependentUpon>InicioAdministrador.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Administrador\MisDatos.aspx.cs">
+      <DependentUpon>MisDatos.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Administrador\MisDatos.aspx.designer.cs">
+      <DependentUpon>MisDatos.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Administrador\PanelServicio.aspx.cs">
       <DependentUpon>PanelServicio.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Administrador\PanelServicio.aspx.designer.cs">
       <DependentUpon>PanelServicio.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Administrador\Reportes.aspx.cs">
+      <DependentUpon>Reportes.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Administrador\Reportes.aspx.designer.cs">
+      <DependentUpon>Reportes.aspx</DependentUpon>
     </Compile>
     <Compile Include="Clientes\AgendaCliente.aspx.cs">
       <DependentUpon>AgendaCliente.aspx</DependentUpon>

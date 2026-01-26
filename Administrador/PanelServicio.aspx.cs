@@ -14,7 +14,7 @@ namespace Agenda.Administrador
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad ADMIN
-            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["RolID"]) != 3)
+            if (Session["UsuarioID"] == null || Convert.ToInt32(Session["Rol"]) != 3)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -32,13 +32,12 @@ namespace Agenda.Administrador
                     int servicioId = Convert.ToInt32(Request.QueryString["id"]);
                     CargarColaboradorAsignado(servicioId);
                 }
-
             }
         }
 
-        // =============================
+        // =========================
         // CARGAR SERVICIO
-        // =============================
+        // =========================
         private void CargarServicio(string id)
         {
             ConexionBD bd = new ConexionBD();
@@ -63,9 +62,9 @@ WHERE ServicioID = @id";
             chkActivo.Checked = Convert.ToBoolean(dt.Rows[0]["Activo"]);
         }
 
-        // =============================
+        // =========================
         // CARGAR COLABORADORES
-        // =============================
+        // =========================
         private void CargarColaboradores()
         {
             ConexionBD bd = new ConexionBD();
@@ -82,9 +81,9 @@ ORDER BY c.Nombre";
             ddlColaboradores.DataBind();
         }
 
-        // =============================
+        // =========================
         // CARGAR COLABORADOR ASIGNADO
-        // =============================
+        // =========================
         private void CargarColaboradorAsignado(int servicioId)
         {
             ConexionBD bd = new ConexionBD();
@@ -96,8 +95,8 @@ WHERE ServicioID = @s AND Activo = 1";
 
             SqlParameter[] p =
             {
-        new SqlParameter("@s", servicioId)
-    };
+                new SqlParameter("@s", servicioId)
+            };
 
             DataTable dt = bd.EjecutarConsulta(sql, p);
 
@@ -108,38 +107,69 @@ WHERE ServicioID = @s AND Activo = 1";
             }
         }
 
-
-        // =============================
-        // GUARDAR
-        // =============================
+        // =========================
+        // GUARDAR SERVICIO
+        // =========================
         protected void btnGuardar_Click(object sender, EventArgs e)
         {
+            lblMensaje.Text = "";
+
+            if (!int.TryParse(txtDuracion.Text, out int duracion))
+            {
+                lblMensaje.Text = "❌ Duración inválida";
+                return;
+            }
+
+            if (!int.TryParse(txtPrecio.Text, out int precio))
+            {
+                lblMensaje.Text = "❌ Precio inválido";
+                return;
+            }
+
             ConexionBD bd = new ConexionBD();
             bool nuevo = string.IsNullOrEmpty(hfServicioID.Value);
 
-            string sqlServicio = nuevo
-                ? @"INSERT INTO dbo.Servicios (NombreServicio, DuracionMin, Precio, Activo)
-                   OUTPUT INSERTED.ServicioID
-                   VALUES (@n,@d,@p,@a)"
-                : @"UPDATE dbo.Servicios
-                   SET NombreServicio=@n, DuracionMin=@d, Precio=@p, Activo=@a
-                   WHERE ServicioID=@id;
-                   SELECT @id;";
+            int servicioId;
 
-            SqlParameter[] pServicio =
+            if (nuevo)
             {
-                new SqlParameter("@n", txtNombre.Text.Trim()),
-                new SqlParameter("@d", Convert.ToInt32(txtDuracion.Text)),
-                new SqlParameter("@p", Convert.ToDecimal(txtPrecio.Text)),
-                new SqlParameter("@a", chkActivo.Checked),
-                new SqlParameter("@id", hfServicioID.Value)
-            };
+                string sqlInsert = @"
+INSERT INTO dbo.Servicios (NombreServicio, DuracionMin, Precio, Activo)
+OUTPUT INSERTED.ServicioID
+VALUES (@n,@d,@p,@a)";
 
-            int servicioId = Convert.ToInt32(
-                bd.EjecutarEscalar(sqlServicio, pServicio)
-            );
+                SqlParameter[] pInsert =
+                {
+                    new SqlParameter("@n", txtNombre.Text.Trim()),
+                    new SqlParameter("@d", duracion),
+                    new SqlParameter("@p", precio),
+                    new SqlParameter("@a", chkActivo.Checked)
+                };
 
-            // DESACTIVAR TODOS LOS COLABORADORES DE ESTE SERVICIO
+                servicioId = Convert.ToInt32(bd.EjecutarEscalar(sqlInsert, pInsert));
+            }
+            else
+            {
+                servicioId = Convert.ToInt32(hfServicioID.Value);
+
+                string sqlUpdate = @"
+UPDATE dbo.Servicios
+SET NombreServicio=@n, DuracionMin=@d, Precio=@p, Activo=@a
+WHERE ServicioID=@id";
+
+                SqlParameter[] pUpdate =
+                {
+                    new SqlParameter("@n", txtNombre.Text.Trim()),
+                    new SqlParameter("@d", duracion),
+                    new SqlParameter("@p", precio),
+                    new SqlParameter("@a", chkActivo.Checked),
+                    new SqlParameter("@id", servicioId)
+                };
+
+                bd.EjecutarComando(sqlUpdate, pUpdate);
+            }
+
+            // DESACTIVAR TODOS LOS COLABORADORES
             string sqlReset = @"
 UPDATE dbo.ServiciosColaboradores
 SET Activo = 0
@@ -149,7 +179,7 @@ WHERE ServicioID = @s";
                 new SqlParameter("@s", servicioId)
             });
 
-            // ACTIVAR / INSERTAR EL SELECCIONADO
+            // ACTIVAR / INSERTAR COLABORADOR
             string sqlColab = @"
 IF EXISTS (
     SELECT 1 FROM dbo.ServiciosColaboradores
@@ -174,9 +204,9 @@ ELSE
             lblMensaje.Text = "✅ Servicio guardado correctamente";
         }
 
-        // =============================
+        // =========================
         // NAVEGACIÓN
-        // =============================
+        // =========================
         protected void btnVolver_Click(object sender, EventArgs e)
         {
             Response.Redirect("GestionServicios.aspx");

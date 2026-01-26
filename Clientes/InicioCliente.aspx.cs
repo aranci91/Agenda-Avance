@@ -20,14 +20,14 @@ namespace Agenda
         protected void Page_Load(object sender, EventArgs e)
         {
             // Seguridad
-            if (Session["UsuarioID"] == null || Session["RolID"] == null)
+            if (Session["UsuarioID"] == null || Session["Rol"] == null)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
             }
 
             // solo cliente (RolID = 1)
-            if (Convert.ToInt32(Session["RolID"]) != 1)
+            if (Convert.ToInt32(Session["Rol"]) != 1)
             {
                 Response.Redirect("~/Ingreso.aspx");
                 return;
@@ -53,9 +53,9 @@ namespace Agenda
             }
         }
 
-        // =========================
+   
         // FECHA -> CARGAR HORAS
-        // =========================
+  
         protected void txtFecha_TextChanged(object sender, EventArgs e)
         {
             lblMensajeCita.Text = "";
@@ -70,9 +70,9 @@ namespace Agenda
             CargarHorasDisponiblesInteligentes(fecha);
         }
 
-        // =========================
+
         // HORAS INTELIGENTES
-        // =========================
+
         private void CargarHorasDisponiblesInteligentes(DateTime fecha)
         {
             lblSinHoras.Text = "";
@@ -172,9 +172,8 @@ WHERE Fecha = @Fecha
             return true;
         }
 
-        // =========================
         // RESEÑAS: CARRUSEL (TOP 10)
-        // =========================
+   
         private void CargarResenasCarrusel()
         {
             lblMensajeResena.Text = "";
@@ -261,7 +260,7 @@ WHERE AtencionID = @AtencionID;";
 
                 if (total > 0)
                 {
-                    lblMensajeResena.Text = "Esa atención ya tiene una reseña registrada 💖";
+                    lblMensajeResena.Text = "Esa atención ya tiene una reseña registrada ";
                     return;
                 }
 
@@ -325,9 +324,9 @@ ORDER BY a.AtencionID DESC;";
             return (Convert.ToInt32(dt.Rows[0]["AtencionID"]), Convert.ToInt32(dt.Rows[0]["ServicioID"]));
         }
 
-        // =========================
+
         // NOMBRE CLIENTE
-        // =========================
+
         private void CargarNombreCliente()
         {
             try
@@ -362,9 +361,9 @@ WHERE UsuarioID = @UsuarioID;";
             }
         }
 
-        // =========================
+
         // SERVICIOS
-        // =========================
+
         private void CargarServicios()
         {
             ddlServicios.Items.Clear();
@@ -468,13 +467,13 @@ WHERE ServicioID = @ServicioID
                 ServicioID = Convert.ToInt32(dt.Rows[0]["ServicioID"]),
                 NombreServicio = dt.Rows[0]["NombreServicio"].ToString(),
                 DuracionMin = Convert.ToInt32(dt.Rows[0]["DuracionMin"]),
-                Precio = Convert.ToDecimal(dt.Rows[0]["Precio"])
+                Precio = Convert.ToInt32(dt.Rows[0]["Precio"])
             };
         }
 
-        // =========================
+    
         // CONFIRMAR CITA (BLOQUEA HORARIOS)
-        // =========================
+
         protected void btnConfirmar_Click(object sender, EventArgs e)
         {
             lblMensajeCita.Text = "";
@@ -604,7 +603,52 @@ WHERE HorarioID = @HorarioID;";
                     bd.EjecutarComando(sqlBloquear, pBloq);
                 }
 
-                lblMensajeCita.Text = "¡Hora agendada con éxito! 💖";
+                // OBTENER DATOS PARA EL CORREO
+                string sqlDatosCorreo = @"
+SELECT 
+    u.Correo,
+    c.Nombre,
+    s.NombreServicio,
+    s.DuracionMin,
+    s.Precio,
+    h.Fecha,
+    h.HoraInicio
+FROM dbo.Citas ci
+INNER JOIN dbo.Clientes c ON c.UsuarioID = ci.UsuarioID_Cliente
+INNER JOIN dbo.Usuarios u ON u.UsuarioID = c.UsuarioID
+INNER JOIN dbo.Servicios s ON s.ServicioID = ci.ServicioID
+INNER JOIN dbo.Horarios h ON h.HorarioID = ci.HorarioID
+WHERE ci.UsuarioID_Cliente = @Cliente
+ORDER BY ci.CitaID DESC";
+
+
+                SqlParameter[] pCorreo =
+                {
+    new SqlParameter("@Cliente", usuarioClienteId)
+};
+
+                DataTable dtCorreo = bd.EjecutarConsulta(sqlDatosCorreo, pCorreo);
+
+                if (dtCorreo.Rows.Count > 0)
+                {
+                    DataRow r = dtCorreo.Rows[0];
+
+                    EmailService.EnviarConfirmacionCita(
+    r["Correo"].ToString(),
+    r["Nombre"].ToString(),
+    r["NombreServicio"].ToString(),
+    Convert.ToInt32(r["DuracionMin"]),
+    Convert.ToDecimal(r["Precio"]),
+    Convert.ToDateTime(r["Fecha"]),
+    r["HoraInicio"].ToString(),
+    "Por favor solo se aceptan 10 minutos de atraso. Cancelaciones con 24 horas de anticipación.",
+    "Transferir valor completo del servicio a Cuenta Rut 17872461-4 y enviar comprobante a este mismo correo"
+);
+
+                }
+
+
+                lblMensajeCita.Text = "¡Hora agendada con éxito! ";
 
                 ddlServicios.SelectedIndex = 0;
                 txtFecha.Text = "";
@@ -618,7 +662,7 @@ WHERE HorarioID = @HorarioID;";
             }
             catch (SqlException)
             {
-                lblMensajeCita.Text = "Esa hora ya fue tomada justo antes 😭 Elige otra porfis.";
+                lblMensajeCita.Text = "Esa hora ya fue tomada justo antes. Elige otra porfis.";
                 ddlHora.Items.Clear();
                 ddlHora.Items.Add(new ListItem("SELECCIONE HORA", ""));
                 CargarHorasDisponiblesInteligentes(fechaSeleccionada);
@@ -629,9 +673,9 @@ WHERE HorarioID = @HorarioID;";
             }
         }
 
-        // =========================
+
         // MENÚ
-        // =========================
+   
         protected void btnCerrarSesion_Click(object sender, EventArgs e)
         {
             Session.Clear();
@@ -649,15 +693,14 @@ WHERE HorarioID = @HorarioID;";
             Response.Redirect("~/Clientes/HistorialCitas.aspx");
         }
 
-        // =========================
         // DTO
-        // =========================
+
         private class ServicioInfo
         {
             public int ServicioID { get; set; }
             public string NombreServicio { get; set; }
             public int DuracionMin { get; set; }
-            public decimal Precio { get; set; }
+            public int Precio { get; set; }
         }
     }
 }
